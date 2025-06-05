@@ -71,7 +71,7 @@ export const ExerciseForm = ({
                   <FormItem>
                     <FormLabel>Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g. Deadlift" {...field} />
+                      <Input placeholder="e.g. Deadlift" {...field} autoFocus />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

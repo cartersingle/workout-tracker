@@ -75,7 +75,7 @@ export const SetForm = ({
                   <FormItem>
                     <FormLabel>Reps</FormLabel>
                     <FormControl>
-                      <Input type="number" {...field} min={0} />
+                      <Input type="number" {...field} min={0} autoFocus />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
