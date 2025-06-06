@@ -20,6 +20,8 @@ interface SetFormProps {
   onOpenChange: (open: boolean) => void;
   exercise: Exercise;
   lastSet?: Set;
+  set?: Set;
+  showDelete?: boolean;
 }
 
 const schema = z.object({
@@ -32,32 +34,51 @@ export const SetForm = ({
   isOpen,
   onOpenChange,
   exercise,
+  set,
   lastSet,
+  showDelete = false,
 }: SetFormProps) => {
   const [form, onSubmit] = useForm(schema, {
     defaultValues: {
-      reps: lastSet?.reps ?? exercise.targetReps,
-      weight: lastSet?.weight ?? 0,
+      reps: set?.reps ?? lastSet?.reps ?? exercise.targetReps,
+      weight: set?.weight ?? lastSet?.weight ?? 0,
     },
     onSubmit: async (data) => {
-      await db.sets.add({
-        ...data,
-        exerciseId: exercise.id,
-        completedAt: Date.now(),
-      });
+      if (set) {
+        await db.sets.update(set.id, data);
+      } else {
+        await db.sets.add({
+          ...data,
+          exerciseId: exercise.id,
+          completedAt: Date.now(),
+        });
+      }
       form.reset();
       onOpenChange(false);
     },
   });
 
   useEffect(() => {
-    if (lastSet) {
+    if (lastSet && !set) {
       form.reset({
         reps: lastSet.reps,
         weight: lastSet.weight,
       });
     }
-  }, [lastSet, form]);
+    if (set) {
+      form.reset({
+        reps: set.reps,
+        weight: set.weight,
+      });
+    }
+  }, [lastSet, form, set]);
+
+  async function onDelete() {
+    if (set) {
+      await db.sets.delete(set.id);
+      onOpenChange(false);
+    }
+  }
 
   return (
     <Drawer open={isOpen} onOpenChange={onOpenChange}>
@@ -94,9 +115,21 @@ export const SetForm = ({
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full">
-                Add
-              </Button>
+              <div className="flex flex-col gap-2">
+                <Button type="submit" className="w-full">
+                  {set ? "Update" : "Add"}
+                </Button>
+                {showDelete && (
+                  <Button
+                    type="button"
+                    className="w-full"
+                    variant="destructive"
+                    onClick={onDelete}
+                  >
+                    Delete
+                  </Button>
+                )}
+              </div>
             </form>
           </Form>
         </div>

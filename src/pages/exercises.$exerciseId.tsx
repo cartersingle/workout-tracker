@@ -1,16 +1,21 @@
 import { Header } from "@/components/header";
-import { db, type Set } from "@/lib/dexie";
+import { db, type Exercise, type Set } from "@/lib/dexie";
 import { useLiveQuery } from "dexie-react-hooks";
-import { PlusIcon } from "lucide-react";
+import { DumbbellIcon, PencilIcon, PlusIcon, TargetIcon } from "lucide-react";
 import { useState } from "react";
 import { useParams } from "react-router";
-import { Button } from "@/components/ui/button";
 import { SetForm } from "@/components/set-form";
 import { isToday } from "date-fns";
+import { ExerciseForm } from "@/components/excercise-form";
 
 const ExercisePage = () => {
-  const [isOpen, setIsOpen] = useState(false);
-  const { exerciseId } = useParams<{ exerciseId: string }>();
+  const [isAddSetOpen, setIsAddSetOpen] = useState(false);
+  const [isEditExerciseOpen, setIsEditExerciseOpen] = useState(false);
+
+  const { exerciseId, workoutId } = useParams<{
+    exerciseId: string;
+    workoutId: string;
+  }>();
 
   const exercise = useLiveQuery(() => db.exercises.get(Number(exerciseId)));
 
@@ -40,35 +45,61 @@ const ExercisePage = () => {
     }
   );
 
+  const hightestWeight = sets.reduce((acc, set) => {
+    if (set.weight > acc) {
+      return set.weight;
+    }
+    return acc;
+  }, 0);
+
   return (
     <>
       <Header
         title={exercise.name}
         action={
-          <Button size="sm" onClick={() => setIsOpen(true)}>
-            <PlusIcon className="size-5" />
-            Add Set
-          </Button>
+          <button onClick={() => setIsEditExerciseOpen(true)}>
+            <PencilIcon className="size-4 text-muted-foreground" />
+          </button>
         }
+        backButton={`/workouts/${workoutId}`}
       />
       <div className="p-4 space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="flex items-center justify-between p-2 border rounded-md">
+            <div>
+              <h2 className="text-sm">Target Reps</h2>
+              <p className="text-2xl font-semibold">
+                {exercise.targetReps} reps
+              </p>
+            </div>
+            <TargetIcon className="size-9" />
+          </div>
+          <div className="flex items-center justify-between p-2 border rounded-md">
+            <div>
+              <h2 className="text-sm">Highest Weight</h2>
+              <p className="text-2xl font-semibold">{hightestWeight} lbs</p>
+            </div>
+            <DumbbellIcon className="size-9" />
+          </div>
+        </div>
         <h2 className="text-lg font-semibold mb-3">Today</h2>
         <div className="space-y-2">
+          <div
+            role="button"
+            onClick={() => setIsAddSetOpen(true)}
+            className="p-2 border rounded-md flex items-center text-muted-foreground gap-1"
+          >
+            <PlusIcon className="size-5" />
+            <p>Add Set</p>
+          </div>
           {today?.map((set) => (
-            <div key={set.id} className="p-2 border rounded">
-              {set.reps} reps at {set.weight} lbs
-            </div>
+            <ExerciseCard key={set.id} set={set} exercise={exercise} />
           ))}
-          {today?.length === 0 && (
-            <p className="text-muted-foreground text-sm">No previous sets</p>
-          )}
         </div>
         <h2 className="text-lg font-semibold mb-3">Previous</h2>
         <div className="space-y-2">
           {rest?.map((set) => (
-            <div key={set.id} className="p-2 border rounded">
-              {set.reps} reps at {set.weight} lbs
-            </div>
+            <ExerciseCard key={set.id} set={set} exercise={exercise} />
           ))}
           {rest?.length === 0 && (
             <p className="text-muted-foreground text-sm">No previous sets</p>
@@ -77,12 +108,48 @@ const ExercisePage = () => {
       </div>
       <SetForm
         title="Add Set"
-        isOpen={isOpen}
-        onOpenChange={setIsOpen}
+        isOpen={isAddSetOpen}
+        onOpenChange={setIsAddSetOpen}
         exercise={exercise}
         lastSet={today?.[0]}
       />
+      <ExerciseForm
+        title="Edit Exercise"
+        isOpen={isEditExerciseOpen}
+        onOpenChange={setIsEditExerciseOpen}
+        workoutId={Number(workoutId)}
+        exercise={exercise}
+        showDelete
+      />
     </>
+  );
+};
+
+interface ExerciseCardProps {
+  set: Set;
+  exercise: Exercise;
+}
+
+export const ExerciseCard = ({ set, exercise }: ExerciseCardProps) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="p-2 border rounded-md flex items-center justify-between">
+      <p>
+        {set.reps} reps at {set.weight} lbs
+      </p>
+      <button onClick={() => setIsOpen(true)}>
+        <PencilIcon className="size-4 text-muted-foreground" />
+      </button>
+      <SetForm
+        title="Edit Set"
+        isOpen={isOpen}
+        onOpenChange={setIsOpen}
+        exercise={exercise}
+        set={set}
+        showDelete
+      />
+    </div>
   );
 };
 

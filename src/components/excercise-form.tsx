@@ -12,6 +12,8 @@ import {
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { db, type Exercise } from "../lib/dexie";
+import { useEffect } from "react";
+import { useNavigate } from "react-router";
 
 interface ExcerciseFormProps {
   title: string;
@@ -19,6 +21,7 @@ interface ExcerciseFormProps {
   onOpenChange: (open: boolean) => void;
   exercise?: Exercise;
   workoutId: number;
+  showDelete?: boolean;
 }
 
 const schema = z.object({
@@ -32,7 +35,9 @@ export const ExerciseForm = ({
   onOpenChange,
   exercise,
   workoutId,
+  showDelete = false,
 }: ExcerciseFormProps) => {
+  const navigate = useNavigate();
   const [form, onSubmit] = useForm(schema, {
     defaultValues: {
       name: exercise?.name ?? "",
@@ -54,6 +59,28 @@ export const ExerciseForm = ({
       onOpenChange(false);
     },
   });
+
+  useEffect(() => {
+    if (exercise) {
+      form.reset({
+        name: exercise.name,
+        targetReps: exercise.targetReps,
+      });
+    }
+  }, [exercise, form]);
+
+  async function deleteExercise() {
+    if (exercise) {
+      await db.transaction("rw", db.exercises, db.sets, async () => {
+        const sets = await db.sets.where({ exerciseId: exercise.id }).toArray();
+
+        db.exercises.delete(exercise.id);
+        db.sets.bulkDelete(sets.map((e) => e.id));
+      });
+      onOpenChange(false);
+      navigate(`/workouts/${workoutId}`);
+    }
+  }
 
   return (
     <Drawer open={isOpen} onOpenChange={onOpenChange}>
@@ -95,9 +122,20 @@ export const ExerciseForm = ({
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full">
-                {exercise ? "Update" : "Create"}
-              </Button>
+              <div className="flex flex-col w-full gap-2">
+                <Button type="submit" className="w-full">
+                  {exercise ? "Update" : "Create"}
+                </Button>
+                {showDelete && (
+                  <Button
+                    variant="destructive"
+                    onClick={deleteExercise}
+                    className="w-full"
+                  >
+                    Delete
+                  </Button>
+                )}
+              </div>
             </form>
           </Form>
         </div>
